@@ -10,16 +10,20 @@ class IncidentController extends RestfulController<Incident> {
     @Override
     def save() {
         def jsonParams = request.JSON
-        def location = new Location(longitude: jsonParams.longitude, latitude: jsonParams.latitude).save()
+        def location = new Location(longitude: jsonParams.longitude, latitude: jsonParams.latitude)
 
-        if(location == null) {
+        if(location.validate()) {
+            location.save()
+        } else{
             render(status: 422, text: "Invalid coordinates of $jsonParams.longitude, $jsonParams.latitude.")
             return
         }
 
-        def incident = new Incident(description: jsonParams.description, location: location).save()
+        def incident = new Incident(description: jsonParams.description, location: location)
 
-        if(incident == null) {
+        if(incident.validate()) {
+            incident.save()
+        } else {
             render(status: 422, text: "Description must be non-empty.")
             return
         }

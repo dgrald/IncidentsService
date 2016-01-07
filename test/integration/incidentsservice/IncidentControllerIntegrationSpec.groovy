@@ -6,7 +6,7 @@ import spock.lang.Shared
 /**
  *
  */
-class IncidentControllerSpec extends IntegrationSpec {
+class IncidentControllerIntegrationSpec extends IntegrationSpec {
 
     @Shared IncidentController controller = new IncidentController()
 
