@@ -1,8 +1,9 @@
 package incidentsservice
-
 import grails.test.spock.IntegrationSpec
+import org.apache.commons.lang.time.DateUtils
 import spock.lang.Shared
 
+import java.text.SimpleDateFormat
 /**
  *
  */
@@ -10,9 +11,14 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
 
     @Shared IncidentController controller = new IncidentController()
 
+    def date
+    def dateTimeString
+
     def setup() {
-        def location = new Location(longitude: 10, latitude: 10).save()
-        def incident = new Incident(location: location, description: 'description').save()
+        def location = new Location(longitude: 22, latitude: 22).save(flush: true, failOnError: true)
+        new Incident(location: location, description: 'initial incident', date: someDate()).save(flush: true, failOnError: true)
+        date = someDate()
+        dateTimeString = toString(date)
     }
 
     def cleanup() {
@@ -23,7 +29,8 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
         controller.request.json = [
                 description: 'description',
                 latitude: 10,
-                longitude: 10
+                longitude: 10,
+                dateTime: dateTimeString
         ]
         controller.save()
         def response = controller.response.json
@@ -32,6 +39,7 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
         response.location.latitude == 10
         response.location.longitude == 10
         response.description == 'description'
+        parse(response.date) == date
         Incident.count == 2
     }
 
@@ -40,7 +48,8 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
         controller.request.json = [
                 description: 'description',
                 latitude: latitude,
-                longitude: longitude
+                longitude: longitude,
+                dateTime: dateTimeString
         ]
         controller.save()
 
@@ -62,7 +71,8 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
         controller.request.json = [
                 description: description,
                 latitude: 20,
-                longitude: 20
+                longitude: 20,
+                dateTime: dateTimeString
         ]
         controller.save()
         def response = controller.response
@@ -73,5 +83,27 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
 
         where:
         description << [null, '']
+    }
+
+    private static def someDate(){
+        def min = 1293861599L
+        def max = 1325397600L
+        def date = new Date(new Random().nextLong() % (max - min) + min);
+        DateUtils.round(date, Calendar.SECOND);
+    }
+
+    private static String toString( Date date ) {
+        getDateFormatter().format(date)
+    }
+
+    private static Date parse( String input ) {
+        getDateFormatter().parse(input)
+    }
+
+    private static SimpleDateFormat getDateFormatter() {
+        def tz = TimeZone.getTimeZone("UTC");
+        def df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
+        df.setTimeZone(tz);
+        df
     }
 }
