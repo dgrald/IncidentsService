@@ -55,7 +55,7 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
 
         then:
         controller.response.status == 422
-        controller.response.contentAsString == "Invalid coordinates of $longitude, $latitude."
+        controller.response.contentAsString == "Invalid coordinates of $longitude, $latitude"
 
         where:
         longitude | latitude
@@ -79,10 +79,65 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
 
         then:
         response.status == 422
-        response.contentAsString == "Description must be non-empty."
+        response.contentAsString == "Description must be non-empty"
 
         where:
         description << [null, '']
+    }
+
+    void "null dateTime returns 422"(){
+        when:
+        controller.request.json = [
+                description: 'description',
+                latitude: 20,
+                longitude: 20,
+        ]
+        controller.save()
+        def response = controller.response
+
+        then:
+        response.status == 422
+        response.contentAsString == "Must enter date with the format 'yyyy-MM-dd'T'HH:mm:ssX'"
+    }
+
+    void "can delete an incident"() {
+        when:
+        def incidentToDelete = createIncident()
+        def id = incidentToDelete.id.toString()
+        controller.request.parameters = [id: id]
+        controller.delete()
+
+        then:
+        controller.response.status == 204
+        Incident.findById(id) == null
+    }
+
+    void "no id param responds with 400"() {
+        when:
+        createIncident()
+        controller.request.parameters = [:]
+        controller.delete()
+
+        then:
+        controller.response.status == 400
+        controller.response.contentAsString == "Provide an ID of an incident to delete"
+    }
+
+    void "incident id not found returns 404"() {
+        when:
+        def id = Incident.findAll().sort{it.id}.last().id + 1
+        controller.request.parameters = [id: id.toString()]
+        controller.delete()
+
+        then:
+        controller.response.status == 404
+    }
+
+    private def createIncident() {
+        def location = new Location(longitude: 24, latitude: 22).save(flush: true, failOnError: true)
+        def incident = new Incident(location: location, description: 'an incident', date: someDate())
+        incident.save(flush: true, failOnError: true)
+        incident
     }
 
     private static def someDate(){

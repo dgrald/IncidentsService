@@ -17,24 +17,46 @@ class IncidentController extends RestfulController<Incident> {
         if(location.validate()) {
             location.save()
         } else{
-            render(status: 422, text: "Invalid coordinates of $jsonParams.longitude, $jsonParams.latitude.")
+            render(status: 422, text: "Invalid coordinates of $jsonParams.longitude, $jsonParams.latitude")
             return
         }
 
-        def dateTime = parse(jsonParams.dateTime)
+        def dateTimeParam = jsonParams.dateTime ? parse(jsonParams.dateTime) : null
 
-        def incident = new Incident(description: jsonParams.description, location: location, date: dateTime)
+        if(!dateTimeParam) {
+            render(status: 422, text: "Must enter date with the format 'yyyy-MM-dd'T'HH:mm:ssX'")
+            return
+        }
+
+        def incident = new Incident(description: jsonParams.description, location: location, date: dateTimeParam)
 
         if(incident.validate()) {
             incident.save()
         } else {
-            render(status: 422, text: "Description must be non-empty.")
+            render(status: 422, text: "Description must be non-empty")
             return
         }
 
         JSON.use('deep'){
             render incident as JSON
         }
+    }
+
+    @Override
+    def delete(){
+        if(!params.id) {
+            render(status: 400, text: "Provide an ID of an incident to delete")
+            return
+        }
+
+        def incidentToDelete = Incident.findById(params.long('id'))
+        if(!incidentToDelete) {
+            render(status: 404)
+            return
+        }
+
+        incidentToDelete.delete()
+        render(status: 204)
     }
 
      private static Date parse( String input ) {
