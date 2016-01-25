@@ -11,17 +11,39 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
 
     @Shared IncidentController controller = new IncidentController()
 
+    def originalIncidentDate
+    def originalIncidentDateTimeString
+    def originalLocation
+    def originalIncident
+
     def date
     def dateTimeString
 
     def setup() {
-        def location = new Location(longitude: 22, latitude: 22).save(flush: true, failOnError: true)
-        new Incident(location: location, description: 'initial incident', date: someDate()).save(flush: true, failOnError: true)
+        originalIncidentDate = someDate()
+        originalLocation = new Location(longitude: 22, latitude: 22).save(flush: true, failOnError: true)
+        originalIncident = new Incident(location: originalLocation, description: 'initial incident', date: originalIncidentDate)
+        originalIncident.save(flush: true, failOnError: true)
+        originalIncidentDateTimeString = toString(originalIncidentDate)
+
         date = someDate()
         dateTimeString = toString(date)
     }
 
     def cleanup() {
+        controller.response.reset()
+    }
+
+    void "can retrieve all incidents"() {
+        when:
+        controller.response.format = 'json'
+        controller.request.method = 'GET'
+        controller.index()
+        def response = controller.response
+
+        then:
+        response.status == 200
+        response.contentAsString == "[{\"class\":\"incidentsservice.Incident\",\"id\":1,\"date\":\"$originalIncidentDateTimeString\",\"description\":\"initial incident\",\"location\":{\"class\":\"incidentsservice.Location\",\"id\":1,\"latitude\":22,\"longitude\":22}}]"
     }
 
     void "test creating an incident"() {
@@ -33,13 +55,14 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
                 dateTime: dateTimeString
         ]
         controller.save()
-        def response = controller.response.json
+        def response = controller.response
 
         then:
-        response.location.latitude == 10
-        response.location.longitude == 10
-        response.description == 'description'
-        parse(response.date) == date
+        response.status == 200
+        response.json.location.latitude == 10
+        response.json.location.longitude == 10
+        response.json.description == 'description'
+        parse(response.json.date) == date
         Incident.count == 2
     }
 
@@ -54,7 +77,7 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
         controller.save()
 
         then:
-        controller.response.status == 422
+        controller.response.status == 400
         controller.response.contentAsString == "Invalid coordinates of $longitude, $latitude"
 
         where:
@@ -78,7 +101,7 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
         def response = controller.response
 
         then:
-        response.status == 422
+        response.status == 400
         response.contentAsString == "Description must be non-empty"
 
         where:
@@ -96,7 +119,7 @@ class IncidentControllerIntegrationSpec extends IntegrationSpec {
         def response = controller.response
 
         then:
-        response.status == 422
+        response.status == 400
         response.contentAsString == "Must enter date with the format 'yyyy-MM-dd'T'HH:mm:ssX'"
     }
 

@@ -10,6 +10,15 @@ class IncidentController extends RestfulController<Incident> {
     static responseFormats = ['json']
 
     @Override
+    def index(final Integer max) {
+        params.max = Math.min(max ?: 10, 100)
+
+        JSON.use('deep'){
+            render Incident.list(params) as JSON
+        }
+    }
+
+    @Override
     def save() {
         def jsonParams = request.JSON
         def location = new Location(longitude: jsonParams.longitude, latitude: jsonParams.latitude)
@@ -17,14 +26,14 @@ class IncidentController extends RestfulController<Incident> {
         if(location.validate()) {
             location.save()
         } else{
-            render(status: 422, text: "Invalid coordinates of $jsonParams.longitude, $jsonParams.latitude")
+            render(status: 400, text: "Invalid coordinates of $jsonParams.longitude, $jsonParams.latitude")
             return
         }
 
         def dateTimeParam = jsonParams.dateTime ? parse(jsonParams.dateTime) : null
 
         if(!dateTimeParam) {
-            render(status: 422, text: "Must enter date with the format 'yyyy-MM-dd'T'HH:mm:ssX'")
+            render(status: 400, text: "Must enter date with the format 'yyyy-MM-dd'T'HH:mm:ssX'")
             return
         }
 
@@ -33,7 +42,7 @@ class IncidentController extends RestfulController<Incident> {
         if(incident.validate()) {
             incident.save()
         } else {
-            render(status: 422, text: "Description must be non-empty")
+            render(status: 400, text: "Description must be non-empty")
             return
         }
 
